@@ -3,7 +3,10 @@ package app.aaps
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.content.Intent
+import android.content.Context
 import android.content.IntentFilter
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.net.ConnectivityManager
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -49,6 +52,7 @@ import app.aaps.implementation.lifecycle.ProcessLifecycleListener
 import app.aaps.implementation.plugin.PluginStore
 import app.aaps.implementation.receivers.NetworkChangeReceiver
 import app.aaps.plugins.configuration.keys.ConfigurationBooleanComposedKey
+import app.aaps.plugins.aps.openAPSBoost.StepService
 import app.aaps.plugins.constraints.objectives.keys.ObjectivesLongComposedKey
 import app.aaps.plugins.main.general.themes.ThemeSwitcherPlugin
 import app.aaps.plugins.main.profile.keys.ProfileComposedBooleanKey
@@ -192,6 +196,28 @@ class MainApp : DaggerApplication() {
         }
         handler.postDelayed(refreshWidget, 60000)
         config.appInitialized = true
+
+        // Register step counter sensor for Boost plugin activity detection
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q &&
+                androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACTIVITY_RECOGNITION)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
+                aapsLogger.warn(LTag.APS, "ACTIVITY_RECOGNITION permission not granted — step counter for Boost will not work until permission is granted and app is restarted")
+            } else {
+                val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+                val stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+                if (stepSensor != null) {
+                    sensorManager.registerListener(StepService, stepSensor, SensorManager.SENSOR_DELAY_NORMAL)
+                    aapsLogger.debug("Step counter sensor registered for Boost plugin")
+                } else {
+                    aapsLogger.warn(LTag.APS, "Step counter sensor not available on this device")
+                }
+            }
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.APS, "Failed to register step counter sensor", e)
+        }
+
         aapsLogger.debug("doInit end")
     }
 

@@ -61,4 +61,11 @@ interface AndroidPermission {
      * @param activity context of caller
      */
     fun notifyForSystemWindowPermissions(activity: FragmentActivity)
+
+    /**
+     * Check for activity recognition permission. Raise Overview notification if missing.
+     * Required for step counter used by Boost plugin.
+     * @param activity context of caller
+     */
+    fun notifyForActivityRecognitionPermission(activity: FragmentActivity)
 }

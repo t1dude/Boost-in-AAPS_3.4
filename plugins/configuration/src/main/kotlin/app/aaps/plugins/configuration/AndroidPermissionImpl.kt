@@ -195,4 +195,17 @@ class AndroidPermissionImpl @Inject constructor(
             )
         else uiInteraction.dismissNotification(Notification.PERMISSION_SYSTEM_WINDOW)
     }
+
+    @Synchronized override fun notifyForActivityRecognitionPermission(activity: FragmentActivity) {
+        if (permissionNotGranted(activity, Manifest.permission.ACTIVITY_RECOGNITION))
+            uiInteraction.addNotification(
+                id = Notification.PERMISSION_ACTIVITY_RECOGNITION,
+                text = rh.gs(R.string.need_activity_recognition_permission),
+                level = Notification.INFO,
+                actionButtonId = R.string.request,
+                action = { askForPermission(activity, Manifest.permission.ACTIVITY_RECOGNITION) },
+                validityCheck = { permissionNotGranted(activity, Manifest.permission.ACTIVITY_RECOGNITION) }
+            )
+        else uiInteraction.dismissNotification(Notification.PERMISSION_ACTIVITY_RECOGNITION)
+    }
 }

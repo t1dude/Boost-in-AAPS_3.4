@@ -55,6 +55,14 @@ enum class IntKey(
     ApsAutoIsfHalfBasalExerciseTarget("half_basal_exercise_target", 160, 120, 200, defaultedBySM = true),
     ApsAutoIsfIobThPercent("iob_threshold_percent", 100, 10, 100, defaultedBySM = true),
     ApsDynIsfAdjustmentFactor("DynISFAdjust", 100, 1, 300, dependency = BooleanKey.ApsUseDynamicSensitivity),
+
+    // Boost
+    ApsBoostInactivitySteps("boost_inactivity_steps", 500, 1, 1000, defaultedBySM = true),
+    ApsBoostSleepInSteps("boost_sleep_in_steps", 250, 1, 1000, defaultedBySM = true),
+    ApsBoostActivitySteps5("boost_activity_steps_5", 420, 1, 5000, defaultedBySM = true),
+    ApsBoostActivitySteps30("boost_activity_steps_30", 1200, 1, 10000, defaultedBySM = true),
+    ApsBoostActivitySteps60("boost_activity_steps_60", 1800, 1, 10000, defaultedBySM = true),
+    ApsBoostDynIsfAdjustmentFactor("DynISFAdjust", 100, 1, 300),
     AutosensPeriod("openapsama_autosens_period", 24, 4, 24, calculatedDefaultValue = true),
     MaintenanceLogsAmount("maintenance_logs_amount", 2, 1, 10, defaultedBySM = true),
     AlertsStaleDataThreshold("missed_bg_readings_threshold", 30, 15, 10000, defaultedBySM = true, dependency = BooleanKey.AlertMissedBgReading),

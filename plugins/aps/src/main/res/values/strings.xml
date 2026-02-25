@@ -30,6 +30,83 @@
     <string name="description_smb">Most recent algorithm for advanced users</string>
     <string name="description_smb_dynamic_isf">Most recent algorithm for advanced users with dynamic/automatic ISF</string>
     <string name="description_auto_isf">Most recent algorithm for advanced users with AutoISF extensions</string>
+    <!-- Boost Plugin -->
+    <string name="openaps_boost">Boost</string>
+    <string name="boost_shortname">BOOST</string>
+    <string name="description_boost">Boost based accelerated bolusing with dynamic ISF</string>
+    <string name="boost_insulin_req_title">Boost Insulin Required %%</string>
+    <string name="boost_insulin_req_summary">Percentage of algorithm-determined insulin to deliver as SMB. Default: 50</string>
+    <string name="boost_bolus_title">Boost Bolus Cap</string>
+    <string name="boost_bolus_summary">Maximum individual bolus from Boost. Default: 2.5 U</string>
+    <string name="boost_percent_scale_title">Percent Scale Factor</string>
+    <string name="boost_percent_scale_summary">Maximum scale factor for percent-based Boost sizing between 108-180 mg/dL. Default: 200</string>
+    <string name="boost_scale_title">Boost Scale Value</string>
+    <string name="boost_scale_summary">Multiplier for calculated Boost insulin. Values &gt;=3 disable Boost. Default: 1.0</string>
+    <string name="boost_max_iob_title">Boost Max IOB</string>
+    <string name="boost_max_iob_summary">Maximum IOB for accelerated bolusing. Above this, regular oref1 used. Default: 1.0 U</string>
+    <string name="boost_start_title">Boost Start Time</string>
+    <string name="boost_start_summary">Start of the Boost active window (24h format HH:mm). Default: 22:00</string>
+    <string name="boost_end_title">Boost End Time</string>
+    <string name="boost_end_summary">End of the Boost active window (24h format HH:mm). Default: 07:00</string>
+    <string name="boost_enable_percent_scale_title">Enable Boost Percentage Scaling</string>
+    <string name="boost_enable_percent_scale_summary">Scales SMB when glucose 108-180 mg/dL with increasing delta</string>
+    <string name="boost_enable_circadian_isf_title">Enable Circadian ISF</string>
+    <string name="boost_enable_circadian_isf_summary">Applies time-of-day ISF adjustment based on circadian rhythm model</string>
+    <string name="boost_allow_high_tt_title">Allow Boost with High Temp Targets</string>
+    <string name="boost_allow_high_tt_summary">Allow Boost when high temp target is active (exercise)</string>
+    <string name="boost_stepcount_settings_title">Step Count Settings</string>
+    <string name="boost_stepcount_settings_summary">Configure step-based activity and inactivity detection</string>
+    <string name="boost_inactivity_steps_title">Inactivity Step Count</string>
+    <string name="boost_inactivity_steps_summary">Steps/hour below which user is inactive. Default: 500</string>
+    <string name="boost_inactivity_pct_title">Inactivity Profile Percent</string>
+    <string name="boost_inactivity_pct_summary">Profile percentage when inactive. Default: 130</string>
+    <string name="boost_sleep_in_hrs_title">Sleep-in Hours</string>
+    <string name="boost_sleep_in_hrs_summary">Hours after Boost start to allow sleep-in. Default: 2</string>
+    <string name="boost_sleep_in_steps_title">Sleep-in Steps</string>
+    <string name="boost_sleep_in_steps_summary">Steps/hour below which user is considered still sleeping. Default: 250</string>
+    <string name="boost_activity_steps_5_title">5-Minute Activity Steps</string>
+    <string name="boost_activity_steps_5_summary">Steps in 5 min above which user is active. Default: 420</string>
+    <string name="boost_activity_steps_30_title">30-Minute Activity Steps</string>
+    <string name="boost_activity_steps_30_summary">Steps in 30 min above which user is active. Default: 1200</string>
+    <string name="boost_activity_steps_60_title">60-Minute Activity Steps</string>
+    <string name="boost_activity_steps_60_summary">Steps in 60 min above which user is active. Default: 1800</string>
+    <string name="boost_activity_pct_title">Activity Profile Percent</string>
+    <string name="boost_activity_pct_summary">Profile percentage when active. Default: 80</string>
+
+    <!-- Boost Dynamic ISF -->
+    <string name="boost_dynisf_title">Dynamic ISF (TDD-based)</string>
+    <string name="boost_use_tdd_title">Enable TDD-based ISF</string>
+    <string name="boost_use_tdd_summary">Calculate ISF from Total Daily Dose using the logarithmic formula. When disabled, uses profile ISF directly</string>
+    <string name="boost_adjust_sensitivity_title">Enable TDD sensitivity adjustment</string>
+    <string name="boost_adjust_sensitivity_summary">Adjust sensitivity ratio using 24h TDD / 7D TDD, similar to Autosens. Recommended to start with this off</string>
+    <string name="boost_dynisf_normal_target_title">DynISF normal target (mg/dl)</string>
+    <string name="boost_dynisf_normal_target_summary">Reference BG target for ISF calculation. Default: 99</string>
+    <string name="boost_dynisf_velocity_title">DynISF adjustment factor (%)</string>
+    <string name="boost_dynisf_velocity_summary">How aggressively ISF adjusts with BG. 100%% = full adjustment, lower = more conservative. Default: 100</string>
+    <string name="boost_dynisf_bg_cap_title">DynISF BG cap</string>
+    <string name="boost_dynisf_bg_cap_summary">BG above this value is softened to reduce ISF aggressiveness at very high BG. Default: 210</string>
+    <string name="boost_dynisf_adjust_factor_title">TDD adjustment factor (%)</string>
+    <string name="boost_dynisf_adjust_factor_summary">Scale the calculated TDD by this percentage. Default: 100</string>
+
+    <!-- Boost BG Source Safety -->
+    <string name="boost_allow_all_bg_sources_title">Allow all BG sources for SMBs</string>
+    <string name="boost_allow_all_bg_sources_summary">Bypass advanced filtering check. WARNING: Only use with reliable CGM data</string>
+
+    <!-- Boost Night Mode -->
+    <string name="boost_night_mode_title">Night Mode</string>
+    <string name="boost_night_mode_enabled_title">Enable Night Mode</string>
+    <string name="boost_night_mode_enabled_summary">Disable SMBs during night hours when BG is near target</string>
+    <string name="boost_night_mode_bg_offset_title">Night Mode BG Offset</string>
+    <string name="boost_night_mode_bg_offset_summary">SMBs disabled when BG is below profile target + this offset (mg/dL). Default: 27 (1.5 mmol/l)</string>
+    <string name="boost_night_mode_start_title">Night Mode Start Time</string>
+    <string name="boost_night_mode_start_summary">Start of Night Mode window (24h format HH:mm). Default: 22:00</string>
+    <string name="boost_night_mode_end_title">Night Mode End Time</string>
+    <string name="boost_night_mode_end_summary">End of Night Mode window (24h format HH:mm). Default: 07:00</string>
+    <string name="boost_night_mode_disable_with_cob_title">Disable Night Mode when COB > 0</string>
+    <string name="boost_night_mode_disable_with_cob_summary">Allow SMBs during Night Mode if carbs are on board</string>
+    <string name="boost_night_mode_disable_with_low_tt_title">Disable Night Mode with low temp target</string>
+    <string name="boost_night_mode_disable_with_low_tt_summary">Allow SMBs during Night Mode when temp target is below profile target</string>
+    <string name="boost_night_mode_smb_disabled">SMB disabled by Boost Night Mode</string>
     <string name="openapsama_bolus_snooze_dia_divisor">Bolus snooze dia divisor</string>
 
     <string name="openapsma_run">Run now</string>

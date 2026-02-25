@@ -53,4 +53,10 @@ enum class StringKey(
 
     PumpCommonBolusStorage("pump_sync_storage_bolus", ""),
     PumpCommonTbrStorage("pump_sync_storage_tbr", ""),
+
+    // Boost
+    ApsBoostStartTime("boost_start_time", "22:00", defaultedBySM = true),
+    ApsBoostEndTime("boost_end_time", "07:00", defaultedBySM = true),
+    ApsBoostNightModeStart("boost_night_mode_start", "22:00", defaultedBySM = true),
+    ApsBoostNightModeEnd("boost_night_mode_end", "07:00", defaultedBySM = true),
 }

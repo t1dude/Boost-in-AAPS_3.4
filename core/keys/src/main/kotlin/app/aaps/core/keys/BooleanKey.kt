@@ -63,6 +63,17 @@ enum class BooleanKey(
     ApsUseAutoIsfWeights("openapsama_enable_autoISF", false, defaultedBySM = true),
     ApsAutoIsfSmbOnEvenTarget("Enable alternative activation of SMB always", false, defaultedBySM = true),   // profile target
 
+    // Boost
+    ApsBoostEnablePercentScale("enableBoostPercentScale", false, defaultedBySM = true),
+    ApsBoostEnableCircadianIsf("enableCircadianISF", false, defaultedBySM = true),
+    ApsBoostAllowWithHighTt("enableBoost_with_high_temptarget", false, defaultedBySM = true),
+    ApsBoostUseTdd("boost_use_tdd", false, defaultedBySM = true),
+    ApsBoostAdjustSensitivity("boost_adjust_sensitivity", false, defaultedBySM = true),
+    ApsBoostAllowAllBgSources("boost_allow_all_bg_sources", false, defaultedBySM = true),
+    ApsBoostNightModeEnabled("boost_night_mode_enabled", false, defaultedBySM = true),
+    ApsBoostNightModeDisableWithCob("boost_night_mode_disable_with_cob", false, defaultedBySM = true),
+    ApsBoostNightModeDisableWithLowTt("boost_night_mode_disable_with_low_tt", false, defaultedBySM = true),
+
     MaintenanceEnableFabric("enable_fabric2", true, defaultedBySM = true, hideParentScreenIfHidden = true),
 
     MaintenanceEnableExportSettingsAutomation("enable_unattended_export", false, defaultedBySM = false),

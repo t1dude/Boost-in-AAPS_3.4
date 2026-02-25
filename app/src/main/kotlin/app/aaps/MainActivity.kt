@@ -287,6 +287,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
             androidPermission.notifyForSystemWindowPermissions(this)
             androidPermission.notifyForBtConnectPermission(this)
         }
+        androidPermission.notifyForActivityRecognitionPermission(this)
         passwordResetCheck(this)
         exportPasswordResetCheck(this)
 

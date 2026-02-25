@@ -52,4 +52,17 @@ enum class DoubleKey(
     ApsAutoIsfSmbDeliveryRatioMax("openapsama_smb_delivery_ratio_max", 0.5, 0.5, 1.0, defaultedBySM = true),
     ApsAutoIsfSmbMaxRangeExtension("openapsama_smb_max_range_extension", 1.0, 1.0, 5.0, defaultedBySM = true),
 
+    // Boost
+    ApsBoostBolus("boost_bolus_cap", 2.5, 0.1, 10.0, defaultedBySM = true),
+    ApsBoostMaxIob("boost_max_iob", 1.0, 0.1, 12.0, defaultedBySM = true),
+    ApsBoostInsulinReqPct("boost_insulin_req_pct", 50.0, 30.0, 100.0, defaultedBySM = true),
+    ApsBoostScale("boost_scale_value", 1.0, 0.1, 3.0, defaultedBySM = true),
+    ApsBoostPercentScale("boost_percent_scale_factor", 200.0, 50.0, 500.0, defaultedBySM = true),
+    ApsBoostDynIsfNormalTarget("boost_dynisf_normal_target", 99.0, 70.0, 120.0, defaultedBySM = true),
+    ApsBoostDynIsfVelocity("boost_dynisf_velocity", 100.0, 0.0, 100.0, defaultedBySM = true),
+    ApsBoostSleepInHours("boost_sleep_in_hrs", 2.0, 0.0, 18.0, defaultedBySM = true),
+    ApsBoostInactivityPct("boost_inactivity_pct", 130.0, 100.0, 200.0, defaultedBySM = true),
+    ApsBoostActivityPct("boost_activity_pct", 80.0, 30.0, 150.0, defaultedBySM = true),
+    ApsBoostNightModeBgOffset("boost_night_mode_bg_offset", 27.0, 0.0, 90.0, defaultedBySM = true),
+
 }

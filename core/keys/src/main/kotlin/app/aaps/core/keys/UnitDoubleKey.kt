@@ -23,5 +23,8 @@ enum class UnitDoubleKey(
     OverviewHypoTarget("hypo_target", 160.0, 108, 180, defaultedBySM = true),
     OverviewLowMark("low_mark", 72.0, 25, 160, showInNsClientMode = false, hideParentScreenIfHidden = true),
     OverviewHighMark("high_mark", 180.0, 90, 250, showInNsClientMode = false),
-    ApsLgsThreshold("lgsThreshold", 65.0, 60, 100, defaultedBySM = true, dependency = BooleanKey.ApsUseDynamicSensitivity)
+    ApsLgsThreshold("lgsThreshold", 65.0, 60, 100, defaultedBySM = true, dependency = BooleanKey.ApsUseDynamicSensitivity),
+
+    // Boost
+    ApsBoostDynIsfBgCap("boost_dynisf_bg_cap", 210.0, 100, 300, defaultedBySM = true),
 }
