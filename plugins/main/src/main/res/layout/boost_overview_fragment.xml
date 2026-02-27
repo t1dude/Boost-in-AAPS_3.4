@@ -46,7 +46,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:orientation="vertical"
-                    android:gravity="center_horizontal">
+                    android:gravity="center_horizontal"
+                    android:focusable="true"
+                    android:importantForAccessibility="yes">
 
                     <TextView
                         android:id="@+id/pump_label"
@@ -56,6 +58,7 @@
                         android:textSize="11sp"
                         android:textColor="?android:attr/textColorTertiary"
                         android:letterSpacing="0.05"
+                        android:importantForAccessibility="no"
                         tools:ignore="HardcodedText" />
                     <TextView
                         android:id="@+id/pump_reservoir"
@@ -64,6 +67,7 @@
                         android:textSize="20sp"
                         android:textStyle="bold"
                         android:textColor="?android:attr/textColorPrimary"
+                        android:importantForAccessibility="no"
                         tools:text="87U" />
                     <TextView
                         android:id="@+id/pump_battery"
@@ -71,13 +75,15 @@
                         android:layout_height="wrap_content"
                         android:textSize="11sp"
                         android:textColor="?android:attr/textColorSecondary"
+                        android:importantForAccessibility="no"
                         tools:text="🔋 72%" />
                     <TextView
                         android:id="@+id/pump_ages"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="10sp"
+                        android:textSize="11sp"
                         android:textColor="?android:attr/textColorTertiary"
+                        android:importantForAccessibility="no"
                         tools:text="🩹 1.4d  📡 4.2d" />
                 </LinearLayout>
 
@@ -148,12 +154,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="IOB"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -175,12 +182,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="BOOST"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -202,12 +210,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="DynISF"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -229,12 +238,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="PROFILE"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -282,12 +292,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="TDD"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -309,12 +320,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="TARGET"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -336,12 +348,13 @@
                         android:orientation="vertical"
                         android:gravity="center_horizontal"
                         android:padding="10dp"
+                        android:minHeight="48dp"
                         android:foreground="?attr/selectableItemBackground">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="EXERCISE"
-                            android:textSize="10sp"
+                            android:textSize="11sp"
                             android:textColor="?android:attr/textColorTertiary"
                             android:letterSpacing="0.1"
                             tools:ignore="HardcodedText" />
@@ -426,7 +439,8 @@
                         <com.jjoe64.graphview.GraphView
                             android:id="@+id/iob_graph"
                             android:layout_width="match_parent"
-                            android:layout_height="130dp" />
+                            android:layout_height="130dp"
+                            android:contentDescription="@string/iob" />
 
                         <TextView
                             android:id="@+id/iob_graph_label"
@@ -440,6 +454,7 @@
                             android:textSize="11sp"
                             android:textColor="?android:attr/textColorSecondary"
                             android:letterSpacing="0.05"
+                            android:importantForAccessibility="no"
                             tools:ignore="HardcodedText" />
 
                     </RelativeLayout>

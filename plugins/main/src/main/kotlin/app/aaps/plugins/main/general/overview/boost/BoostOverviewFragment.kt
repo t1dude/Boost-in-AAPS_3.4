@@ -402,6 +402,21 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                 else                    -> app.aaps.core.ui.R.drawable.ic_loop_disabled
             }
             binding.connectionIcon.setImageResource(loopIcon)
+
+            // TalkBack content descriptions
+            val bgStr = profileUtil.fromMgdlToStringInUnits(lastBg?.recalculated)
+            val unitsStr = binding.bgBobble.unitsLabel
+            val trendStr = trendDesc ?: ""
+            val ageStr = binding.timeAgo.text
+            binding.bgBobble.contentDescription = "Blood glucose $bgStr $unitsStr, $trendStr, $ageStr"
+            binding.deltaText.contentDescription = binding.deltaText.text
+            val loopDesc = when (loop.runningMode) {
+                RM.Mode.CLOSED_LOOP     -> "Closed loop"
+                RM.Mode.CLOSED_LOOP_LGS -> "Low glucose suspend"
+                RM.Mode.OPEN_LOOP       -> "Open loop"
+                else                    -> "Loop disabled"
+            }
+            binding.connectionIcon.contentDescription = loopDesc
         }
     }
 
@@ -431,6 +446,12 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                 else String.format(Locale.getDefault(), "%.1f", converted)
             } else "---"
             binding.panelDynisfValue.text = dynDisp
+
+            // TalkBack content descriptions (set on parent panels — the clickable elements)
+            binding.panelIob.contentDescription = "Insulin on board: ${String.format(Locale.getDefault(), "%.2f", totalIob)} units. Tap for details"
+            binding.panelBoost.contentDescription = "Boost tier: ${boostStatus.tierLabel}. Tap for details"
+            val unitsStr = if (profileFunction.getUnits() == GlucoseUnit.MGDL) "mg/dL per unit" else "mmol/L per unit"
+            binding.panelDynisf.contentDescription = "Dynamic ISF: $dynDisp $unitsStr. Tap for details"
         }
     }
 
@@ -454,6 +475,10 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             binding.panelProfileName.setTextColor(color)
             binding.panelProfilePct.text = "${pct}%"
             binding.panelProfilePct.setTextColor(color)
+
+            // TalkBack
+            val modStr = if (isModified) ", modified" else ""
+            binding.panelProfile.contentDescription = "Profile: $profileName, $pct percent$modStr. Tap to view, long press to switch"
         }
     }
 
@@ -473,6 +498,13 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             val cStr = if (boostStatus.cannulaAgeDays >= 0) String.format("%.1fd", boostStatus.cannulaAgeDays) else "?"
             val sStr = if (boostStatus.sensorAgeDays >= 0) String.format("%.1fd", boostStatus.sensorAgeDays) else "?"
             binding.pumpAges.text = "\uD83E\uDE79 $cStr  \uD83D\uDCE1 $sStr"
+
+            // TalkBack — set on container; mark children as not individually important
+            val resDesc = if (res > 0) "${decimalFormatter.to0Decimal(res)} units" else "unknown"
+            val batDesc = if (bat != null) "$bat percent" else "unknown"
+            val cDesc = if (boostStatus.cannulaAgeDays >= 0) String.format("%.1f days", boostStatus.cannulaAgeDays) else "unknown"
+            val sDesc = if (boostStatus.sensorAgeDays >= 0) String.format("%.1f days", boostStatus.sensorAgeDays) else "unknown"
+            binding.pumpSection.contentDescription = "Pump: reservoir $resDesc, battery $batDesc, cannula $cDesc, sensor $sDesc"
         }
     }
 
@@ -526,6 +558,18 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                 else                                       -> rh.gac(ctx, app.aaps.core.ui.R.attr.bgInRange)
             }
             binding.panelActivityValue.setTextColor(actColor)
+
+            // TalkBack content descriptions
+            val tddStr = if (tddDisplay > 0) String.format("%.1f units", tddDisplay) else "unavailable"
+            binding.panelTdd.contentDescription = "Total daily dose: $tddStr. Tap for details"
+            val unitsLabel = if (profileFunction.getUnits() == GlucoseUnit.MGDL) "mg/dL" else "mmol/L"
+            val targetDesc = when {
+                hasTempTarget     -> "Temporary target: $targetStr $unitsLabel"
+                apsAdjustedTarget -> "Algorithm adjusted target: $targetStr $unitsLabel"
+                else              -> "Target: $targetStr $unitsLabel"
+            }
+            binding.panelTarget.contentDescription = "$targetDesc. Tap to set temporary target"
+            binding.panelActivity.contentDescription = "Exercise mode: ${bs.activityDetail}. Tap for details"
         }
     }
 
@@ -573,6 +617,11 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         iobGraphData.addNowLine(dateUtil.now())
         iobGraphData.formatAxis(overviewData.fromTime, overviewData.endTime)
         iobGraphData.performUpdate()
+
+        // TalkBack
+        val hours = overviewData.rangeToDisplay
+        binding.bgGraph.contentDescription = "Blood glucose graph, ${hours} hour view. Tap to open treatments. Long press to change time range"
+        binding.iobGraph.contentDescription = "Insulin on board graph, ${hours} hour view"
     }
 
     // --- Notifications ---
