@@ -73,7 +73,7 @@
                         android:id="@+id/pump_battery"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:textColor="?android:attr/textColorSecondary"
                         android:importantForAccessibility="no"
                         tools:text="🔋 72%" />
@@ -81,7 +81,7 @@
                         android:id="@+id/pump_ages"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="11sp"
+                        android:textSize="13sp"
                         android:textColor="?android:attr/textColorTertiary"
                         android:importantForAccessibility="no"
                         tools:text="🩹 1.4d  📡 4.2d" />
