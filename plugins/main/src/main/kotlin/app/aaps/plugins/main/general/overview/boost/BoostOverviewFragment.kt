@@ -126,8 +126,6 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
     @Inject lateinit var dexcomBoyda: DexcomBoyda
     @Inject lateinit var xDripSource: XDripSource
     @Inject lateinit var uel: UserEntryLogger
-    @Inject lateinit var commandQueue: CommandQueue
-    @Inject lateinit var bgQualityCheck: BgQualityCheck
 
     // --- State ---
 
@@ -218,8 +216,6 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         binding.panelDynisf.setOnClickListener(this)
         binding.panelProfile.setOnClickListener(this)
         binding.panelProfile.setOnLongClickListener(this)
-        binding.connectionIcon.setOnClickListener(this)
-        binding.connectionIcon.setOnLongClickListener(this)
         binding.panelIob.setOnClickListener(this)
 
         // Second row
@@ -237,7 +233,6 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         binding.buttonsLayout.carbsButton.setOnClickListener(this)
         binding.buttonsLayout.quickWizardButton.setOnClickListener(this)
         binding.buttonsLayout.quickWizardButton.setOnLongClickListener(this)
-        binding.pumpStatusLayout.setOnClickListener(this)
     }
 
     override fun onResume() {
@@ -659,7 +654,8 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             else persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now())?.lowTarget
                 ?: profileFunction.getProfile()?.getTargetMgdl() ?: 100.0
         val targetStr = profileUtil.fromMgdlToStringInUnits(targetMgdl)
-        val hasTempTarget = persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now()) != null
+        val tempTarget = persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now())
+        val hasTempTarget = tempTarget != null
         // Check if APS has adjusted the target away from profile
         val profileTargetMgdl = profileFunction.getProfile()?.getTargetMgdl() ?: 0.0
         val apsAdjustedTarget = !hasTempTarget && profileTargetMgdl > 0 &&
@@ -680,7 +676,7 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
 
             binding.panelTddValue.text = if (tddDisplay > 0) String.format("%.1f", tddDisplay) else "---"
 
-            binding.panelTargetValue.text = targetStr
+            binding.panelTargetValue.text = if (hasTempTarget) "$targetStr ${dateUtil.untilString(tempTarget!!.end, rh)}" else targetStr
             binding.panelTargetValue.setTextColor(
                 when {
                     hasTempTarget     -> rh.gac(ctx, app.aaps.core.ui.R.attr.warningColor)
@@ -703,7 +699,7 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             binding.panelTdd.contentDescription = "Total daily dose: $tddStr. Tap for details"
             val unitsLabel = if (profileFunction.getUnits() == GlucoseUnit.MGDL) "mg/dL" else "mmol/L"
             val targetDesc = when {
-                hasTempTarget     -> "Temporary target: $targetStr $unitsLabel"
+                hasTempTarget     -> "Temporary target: $targetStr $unitsLabel, ${dateUtil.untilString(tempTarget!!.end, rh)} remaining"
                 apsAdjustedTarget -> "Algorithm adjusted target: $targetStr $unitsLabel"
                 else              -> "Target: $targetStr $unitsLabel"
             }
