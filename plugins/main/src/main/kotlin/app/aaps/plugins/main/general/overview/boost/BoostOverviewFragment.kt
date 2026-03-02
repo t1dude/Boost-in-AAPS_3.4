@@ -19,6 +19,7 @@ import app.aaps.core.data.ue.Action
 import app.aaps.core.data.ue.Sources
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.automation.Automation
+import app.aaps.core.interfaces.bgQualityCheck.BgQualityCheck
 import app.aaps.core.interfaces.configuration.Config
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.iob.GlucoseStatusProvider
@@ -32,15 +33,23 @@ import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.protection.ProtectionCheck
+import app.aaps.core.interfaces.pump.BolusProgressData
+import app.aaps.core.interfaces.queue.CommandQueue
 import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.interfaces.rx.AapsSchedulers
 import app.aaps.core.interfaces.rx.bus.RxBus
+import app.aaps.core.interfaces.rx.events.EventAcceptOpenLoopChange
 import app.aaps.core.interfaces.rx.events.EventBucketedDataCreated
 import app.aaps.core.interfaces.rx.events.EventEffectiveProfileSwitchChanged
+import app.aaps.core.interfaces.rx.events.EventNewOpenLoopNotification
+import app.aaps.core.interfaces.rx.events.EventInitializationChanged
+import app.aaps.core.interfaces.rx.events.EventRunningModeChange
 import app.aaps.core.interfaces.rx.events.EventPreferenceChange
 import app.aaps.core.interfaces.rx.events.EventPumpStatusChanged
 import app.aaps.core.interfaces.rx.events.EventRefreshOverview
 import app.aaps.core.interfaces.rx.events.EventScale
+import app.aaps.core.interfaces.rx.events.EventTempTargetChange
+import app.aaps.core.interfaces.rx.events.EventWearUpdateTiles
 import app.aaps.core.interfaces.rx.events.EventUpdateOverviewCalcProgress
 import app.aaps.core.interfaces.rx.events.EventUpdateOverviewGraph
 import app.aaps.core.interfaces.rx.events.EventUpdateOverviewIobCob
@@ -117,6 +126,8 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
     @Inject lateinit var dexcomBoyda: DexcomBoyda
     @Inject lateinit var xDripSource: XDripSource
     @Inject lateinit var uel: UserEntryLogger
+    @Inject lateinit var commandQueue: CommandQueue
+    @Inject lateinit var bgQualityCheck: BgQualityCheck
 
     // --- State ---
 
@@ -207,6 +218,8 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         binding.panelDynisf.setOnClickListener(this)
         binding.panelProfile.setOnClickListener(this)
         binding.panelProfile.setOnLongClickListener(this)
+        binding.connectionIcon.setOnClickListener(this)
+        binding.connectionIcon.setOnLongClickListener(this)
         binding.panelIob.setOnClickListener(this)
 
         // Second row
@@ -224,6 +237,7 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         binding.buttonsLayout.carbsButton.setOnClickListener(this)
         binding.buttonsLayout.quickWizardButton.setOnClickListener(this)
         binding.buttonsLayout.quickWizardButton.setOnLongClickListener(this)
+        binding.pumpStatusLayout.setOnClickListener(this)
     }
 
     override fun onResume() {
@@ -280,6 +294,26 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                 updatePumpStatus()
             }, fabricPrivacy::logException)
         disposable += rxBus
+            .toObservable(EventNewOpenLoopNotification::class.java)
+            .observeOn(aapsSchedulers.io)
+            .subscribe({ scheduleUpdateGUI() }, fabricPrivacy::logException)
+        disposable += rxBus
+            .toObservable(EventAcceptOpenLoopChange::class.java)
+            .observeOn(aapsSchedulers.io)
+            .subscribe({ scheduleUpdateGUI() }, fabricPrivacy::logException)
+        disposable += rxBus
+            .toObservable(EventTempTargetChange::class.java)
+            .observeOn(aapsSchedulers.io)
+            .subscribe({ scheduleUpdateGUI() }, fabricPrivacy::logException)
+        disposable += rxBus
+            .toObservable(EventRunningModeChange::class.java)
+            .observeOn(aapsSchedulers.io)
+            .subscribe({ updateLoopIcon() }, fabricPrivacy::logException)
+        disposable += rxBus
+            .toObservable(EventInitializationChanged::class.java)
+            .observeOn(aapsSchedulers.main)
+            .subscribe({ processButtonsVisibility() }, fabricPrivacy::logException)
+        disposable += rxBus
             .toObservable(EventPreferenceChange::class.java)
             .observeOn(aapsSchedulers.io)
             .subscribe({ scheduleUpdateGUI() }, fabricPrivacy::logException)
@@ -295,6 +329,7 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         refreshLoop = Runnable { refreshAll(); handler.postDelayed(refreshLoop, 60_000L) }
         handler.postDelayed(refreshLoop, 60_000L)
         handler.post { refreshAll() }
+        popupBolusDialogIfRunning(onClick = false)
     }
 
     override fun onPause() {
@@ -431,13 +466,7 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
 
             binding.timeAgo.text = dateUtil.minOrSecAgo(rh, lastBg?.timestamp)
 
-            val loopIcon = when (loop.runningMode) {
-                RM.Mode.CLOSED_LOOP     -> app.aaps.core.objects.R.drawable.ic_loop_closed
-                RM.Mode.CLOSED_LOOP_LGS -> app.aaps.core.ui.R.drawable.ic_loop_lgs
-                RM.Mode.OPEN_LOOP       -> app.aaps.core.ui.R.drawable.ic_loop_open
-                else                    -> app.aaps.core.ui.R.drawable.ic_loop_disabled
-            }
-            binding.connectionIcon.setImageResource(loopIcon)
+            updateLoopIcon()
 
             // TalkBack content descriptions
             val bgStr = profileUtil.fromMgdlToStringInUnits(lastBg?.recalculated)
@@ -446,13 +475,87 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             val ageStr = binding.timeAgo.text
             binding.bgBobble.contentDescription = "Blood glucose $bgStr $unitsStr, $trendStr, $ageStr"
             binding.deltaText.contentDescription = binding.deltaText.text
-            val loopDesc = when (loop.runningMode) {
-                RM.Mode.CLOSED_LOOP     -> "Closed loop"
-                RM.Mode.CLOSED_LOOP_LGS -> "Low glucose suspend"
-                RM.Mode.OPEN_LOOP       -> "Open loop"
-                else                    -> "Loop disabled"
+
+            // BG quality indicator (matches standard Overview)
+            val qualityIcon = bgQualityCheck.icon()
+            if (qualityIcon != 0) {
+                binding.bgQuality.visibility = View.VISIBLE
+                binding.bgQuality.setImageResource(qualityIcon)
+                binding.bgQuality.contentDescription = bgQualityCheck.stateDescription()
+                binding.bgQuality.setOnClickListener {
+                    context?.let { ctx -> OKDialog.show(ctx, rh.gs(R.string.data_status), bgQualityCheck.message) }
+                }
+            } else {
+                binding.bgQuality.visibility = View.GONE
             }
-            binding.connectionIcon.contentDescription = loopDesc
+        }
+    }
+
+    // --- Loop status icon --- (matches standard OverviewFragment processAps logic)
+
+    private fun updateLoopIcon() {
+        runOnUiThread {
+            _binding ?: return@runOnUiThread
+            val pump = activePlugin.activePump
+            if (pump.pumpDescription.isTempBasalCapable) {
+                binding.connectionIcon.visibility = View.VISIBLE
+                when (loop.runningMode) {
+                    RM.Mode.SUPER_BOLUS       -> {
+                        binding.connectionIcon.setImageResource(R.drawable.ic_loop_superbolus)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.superbolus)
+                        binding.loopStatusText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.loopStatusText.visibility = View.VISIBLE
+                    }
+                    RM.Mode.DISCONNECTED_PUMP -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_disconnected)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.disconnected)
+                        binding.loopStatusText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.loopStatusText.visibility = View.VISIBLE
+                    }
+                    RM.Mode.SUSPENDED_BY_PUMP -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_paused)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.pumpsuspended)
+                        binding.loopStatusText.visibility = View.GONE
+                    }
+                    RM.Mode.SUSPENDED_BY_USER -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_paused)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.loopsuspended)
+                        binding.loopStatusText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.loopStatusText.visibility = View.VISIBLE
+                    }
+                    RM.Mode.SUSPENDED_BY_DST  -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_paused)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.loop_suspended_by_dst)
+                        binding.loopStatusText.text = dateUtil.age(loop.minutesToEndOfSuspend() * 60000L, true, rh)
+                        binding.loopStatusText.visibility = View.VISIBLE
+                    }
+                    RM.Mode.CLOSED_LOOP_LGS   -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_lgs)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.uel_lgs_loop_mode)
+                        binding.loopStatusText.visibility = View.GONE
+                    }
+                    RM.Mode.CLOSED_LOOP       -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.objects.R.drawable.ic_loop_closed)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.closedloop)
+                        binding.loopStatusText.visibility = View.GONE
+                    }
+                    RM.Mode.OPEN_LOOP         -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_open)
+                        binding.connectionIcon.contentDescription = rh.gs(app.aaps.core.ui.R.string.openloop)
+                        binding.loopStatusText.visibility = View.GONE
+                    }
+                    RM.Mode.DISABLED_LOOP     -> {
+                        binding.connectionIcon.setImageResource(app.aaps.core.ui.R.drawable.ic_loop_disabled)
+                        binding.connectionIcon.contentDescription = rh.gs(R.string.disabled_loop)
+                        binding.loopStatusText.visibility = View.GONE
+                    }
+                    RM.Mode.RESUME            -> error("Invalid mode")
+                }
+            } else {
+                binding.connectionIcon.visibility = View.GONE
+                binding.loopStatusText.visibility = View.GONE
+            }
+            processButtonsVisibility()
         }
     }
 
@@ -531,15 +634,15 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             binding.pumpReservoir.text = if (res > 0) "${decimalFormatter.to0Decimal(res)}U" else "---"
             val bat = pump.batteryLevel
             binding.pumpBattery.text = if (bat != null) "\uD83D\uDD0B ${bat}%" else "\uD83D\uDD0B ---"
-            val cStr = if (boostStatus.cannulaAgeDays >= 0) String.format("%.1fd", boostStatus.cannulaAgeDays) else "?"
-            val sStr = if (boostStatus.sensorAgeDays >= 0) String.format("%.1fd", boostStatus.sensorAgeDays) else "?"
+            val cStr = formatAgeDaysHours(boostStatus.cannulaAgeDays)
+            val sStr = formatAgeDaysHours(boostStatus.sensorAgeDays)
             binding.pumpAges.text = "\uD83E\uDE79 $cStr  \uD83D\uDCE1 $sStr"
 
             // TalkBack — set on container; mark children as not individually important
             val resDesc = if (res > 0) "${decimalFormatter.to0Decimal(res)} units" else "unknown"
             val batDesc = if (bat != null) "$bat percent" else "unknown"
-            val cDesc = if (boostStatus.cannulaAgeDays >= 0) String.format("%.1f days", boostStatus.cannulaAgeDays) else "unknown"
-            val sDesc = if (boostStatus.sensorAgeDays >= 0) String.format("%.1f days", boostStatus.sensorAgeDays) else "unknown"
+            val cDesc = formatAgeDaysHours(boostStatus.cannulaAgeDays)
+            val sDesc = formatAgeDaysHours(boostStatus.sensorAgeDays)
             binding.pumpSection.contentDescription = "Pump: reservoir $resDesc, battery $batDesc, cannula $cDesc, sensor $sDesc"
         }
     }
@@ -709,9 +812,17 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
             && preferences.get(BooleanKey.OverviewShowWizardButton)).toVisibility()
         binding.buttonsLayout.insulinButton.visibility = (profile != null && preferences.get(BooleanKey.OverviewShowInsulinButton)).toVisibility()
 
-        // Insulin button text (active insulin icon)
-        if (preferences.get(BooleanKey.OverviewShowInsulinButton)) {
-            binding.buttonsLayout.insulinButton.text = rh.gs(app.aaps.core.ui.R.string.overview_insulin_label)
+        // Insulin button: warning colour when pump disconnected/suspended
+        if (loop.runningMode == RM.Mode.DISCONNECTED_PUMP || pump.isSuspended() || !pump.isInitialized()) {
+            setRibbon(binding.buttonsLayout.insulinButton,
+                app.aaps.core.ui.R.attr.ribbonTextWarningColor,
+                app.aaps.core.ui.R.attr.ribbonWarningColor,
+                rh.gs(app.aaps.core.ui.R.string.overview_insulin_label))
+        } else {
+            setRibbon(binding.buttonsLayout.insulinButton,
+                app.aaps.core.ui.R.attr.icBolusColor,
+                app.aaps.core.ui.R.attr.ribbonDefaultColor,
+                rh.gs(app.aaps.core.ui.R.string.overview_insulin_label))
         }
 
         binding.buttonsLayout.calibrationButton.visibility = (xDripIsBgSource && actualBG != null && preferences.get(BooleanKey.OverviewShowCalibrationButton)).toVisibility()
@@ -722,6 +833,14 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                 drawable?.mutate()
                 drawable?.colorFilter = PorterDuffColorFilter(rh.gac(ctx, app.aaps.core.ui.R.attr.cgmDexColor), PorterDuff.Mode.SRC_IN)
             }
+            binding.buttonsLayout.cgmButton.setTextColor(rh.gac(ctx, app.aaps.core.ui.R.attr.cgmDexColor))
+        } else if (xDripIsBgSource) {
+            binding.buttonsLayout.cgmButton.setCompoundDrawablesWithIntrinsicBounds(null, rh.gd(app.aaps.core.objects.R.drawable.ic_xdrip), null, null)
+            for (drawable in binding.buttonsLayout.cgmButton.compoundDrawables) {
+                drawable?.mutate()
+                drawable?.colorFilter = PorterDuffColorFilter(rh.gac(ctx, app.aaps.core.ui.R.attr.cgmXdripColor), PorterDuff.Mode.SRC_IN)
+            }
+            binding.buttonsLayout.cgmButton.setTextColor(rh.gac(ctx, app.aaps.core.ui.R.attr.cgmXdripColor))
         }
 
         // --- Automation user action buttons (second row) ---
@@ -764,6 +883,7 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
 
         if (list != lastUserAction) {
             lastUserAction = list
+            rxBus.send(EventWearUpdateTiles())
         }
     }
 
@@ -774,6 +894,13 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         if (childFragmentManager.isStateSaved) return
         activity?.let { a ->
             when (v.id) {
+                // Loop status icon — opens loop dialog (suspend, disable, etc.)
+                R.id.connection_icon -> {
+                    protectionCheck.queryProtection(a, ProtectionCheck.Protection.BOLUS, UIRunnable {
+                        if (isAdded) uiInteraction.runLoopDialog(childFragmentManager, 1)
+                    })
+                }
+
                 // Boost detail panels
                 R.id.panel_boost -> {
                     val bs = lastBoostStatus
@@ -862,12 +989,23 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                     if (xDripSource.isEnabled())
                         uiInteraction.runCalibrationDialog(childFragmentManager)
                 }
+                R.id.pump_status_layout -> {
+                    popupBolusDialogIfRunning(onClick = true)
+                }
             }
         }
     }
 
     override fun onLongClick(v: View): Boolean {
         when (v.id) {
+            R.id.connection_icon -> {
+                activity?.let { a ->
+                    protectionCheck.queryProtection(a, ProtectionCheck.Protection.BOLUS, UIRunnable {
+                        if (isAdded) uiInteraction.runLoopDialog(childFragmentManager, 0)
+                    })
+                }
+                return true
+            }
             R.id.panel_profile -> {
                 activity?.let { a ->
                     if (loop.runningMode == RM.Mode.DISCONNECTED_PUMP)
@@ -905,5 +1043,37 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
                 aapsLogger.debug("Error opening CGM app")
             }
         }
+    }
+
+    /** Show bolus progress dialog if a bolus is currently being delivered (matches standard Overview) */
+    private fun popupBolusDialogIfRunning(onClick: Boolean) {
+        if (commandQueue.bolusInQueue()) {
+            if (!BolusProgressData.bolusEnded && (!BolusProgressData.isSMB || onClick)) {
+                activity?.let { a ->
+                    protectionCheck.queryProtection(a, ProtectionCheck.Protection.BOLUS, UIRunnable {
+                        if (isAdded) uiInteraction.runBolusProgressDialog(childFragmentManager)
+                    })
+                }
+            }
+        }
+    }
+
+    /** Set button text, background and text colour (matches standard Overview ribbon styling) */
+    private fun setRibbon(view: android.widget.TextView, attrResText: Int, attrResBack: Int, text: String) {
+        with(view) {
+            setText(text)
+            setBackgroundColor(rh.gac(context, attrResBack))
+            setTextColor(rh.gac(context, attrResText))
+            compoundDrawables[0]?.setTint(rh.gac(context, attrResText))
+        }
+    }
+
+    /** Format age from fractional days to "Xd Yh" string */
+    private fun formatAgeDaysHours(ageDays: Double): String {
+        if (ageDays < 0) return "?"
+        val totalHours = (ageDays * 24).toLong()
+        val days = totalHours / 24
+        val hours = totalHours % 24
+        return "${days}d ${hours}h"
     }
 }
