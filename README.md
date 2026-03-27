@@ -19,6 +19,35 @@ This release also includes a **new Boost Overview UI** — a redesigned home scr
 
 ## What's new in this release?
 
+### Fast-Carb Rebound Protection
+
+When fast-acting carbohydrates are eaten to treat a low (a rescue carb event), the subsequent glucose rise can look identical to an unannounced meal from the algorithm's perspective — rapid rise, no COB entry, high UAM boost factors. Without a logged carb entry, Boost would previously fire its aggressive UAM and acceleration tiers during this recovery, risking insulin stacking onto what is actually a carb-driven rebound.
+
+This release adds fast-carb rebound detection to both Boost and Boost V2. Each loop cycle, AAPS computes the minimum CGM reading over the last 60 minutes (`recentLowBG`) and passes it to the dosing algorithm. If the following conditions are all true simultaneously, the algorithm concludes a fast-carb rescue rebound is in progress:
+
+- `recentLowBG` was below 100 mg/dL (BG was in low-normal range within the last hour)
+- No carbs are currently logged (`mealCOB = 0`)
+- Current BG is below 170 mg/dL (still in the recovery zone, not a true hyperglycaemic rise)
+- `delta_accl` is above 25 (glucose acceleration is sharp — consistent with fast-carb absorption)
+
+When this pattern is detected, **Tier 3 (UAM Boost), Tier 5 (Percent Scale), and Tier 6 (Acceleration Bolus)** are bypassed. The algorithm falls through to **Tier 7 (Enhanced oref1)** instead, which provides a modest proportional response appropriate for a recovering glucose rather than an aggressive boost.
+
+**What this means in practice:** after eating fast carbs without logging them, the algorithm will still deliver insulin if the glucose rises above target — it just won't multiply it up using the UAM/acceleration logic that was calibrated for unannounced meals from a normal baseline. Once BG has been above 100 mg/dL for a full 60 minutes, `recentLowBG` will rise above the threshold and normal boost behaviour resumes automatically.
+
+**How the detection works:**
+
+Two signals are used — either is sufficient, with `delta_accl > 25` and `COB = 0` required in both cases:
+
+- **`recentLowBG < 100 mg/dL`** — BG was in low-normal territory within the last 60 minutes (the typical pre-treatment state). This covers the common scenario of eating fast carbs to treat or prevent a low.
+
+- **`reversalScore > 30`** — computed as `delta × |longAvgDelta|` when `longAvgDelta < 0` and `delta > 0`. This captures fast carbs eaten from a falling high BG where the long-term average still reflects the preceding fall — even if BG never dropped below 100 mg/dL. When the long average is essentially flat (±2 mg/dL), the score equals approximately `delta × 2`, requiring a delta above 15 mg/dL/5min to fire — appropriately conservative for a near-flat trend.
+
+This combination was validated against a labelled dataset of 21 events (12 fast-carb, 9 meal): it correctly identified 12/12 fast-carb events (with corrected per-cycle lookback). The 3–4 false positives were all unlogged meals eaten after a low — cases the algorithm cannot distinguish from fast-carb rebounds, but where the clinical consequence (Tier 7 giving a modest dose instead of Tier 3) is lower-risk than the alternative.
+
+This protection applies to both the **Boost** and **Boost V2** plugins.
+
+---
+
 ### Boostv2 Plugin using DynISF V2
 
 **Important:** When starting with DynISF V2 — set the **TDD adjustment factor to 100%** as your starting point. This gives you the unmodified formula output. Adjust up or down from there based on your results. Do not carry over your V1 adjustment factor, as the squared TDD term means the same percentage has a much larger effect in V2 (so if your value is below 100%, it produces significantly larger ISF values).
