@@ -38,8 +38,12 @@ import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.profiling.Profiler
 import app.aaps.core.interfaces.resources.ResourceHelper
+import app.aaps.core.interfaces.rx.AapsSchedulers
 import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventAPSCalculationFinished
+import app.aaps.core.interfaces.rx.events.EventCalibrationDetected
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.kotlin.plusAssign
 import app.aaps.core.interfaces.stats.TddCalculator
 import app.aaps.core.interfaces.ui.UiInteraction
 import app.aaps.core.interfaces.utils.DateUtil
@@ -87,6 +91,7 @@ import kotlin.math.min
 @Singleton
 open class OpenAPSBoostV2Plugin @Inject constructor(
     aapsLogger: AAPSLogger,
+    private val aapsSchedulers: AapsSchedulers,
     private val rxBus: RxBus,
     private val constraintsChecker: ConstraintsChecker,
     rh: ResourceHelper,
@@ -125,6 +130,26 @@ open class OpenAPSBoostV2Plugin @Inject constructor(
     override var lastAPSRun: Long = 0
     override val algorithm = APSResult.Algorithm.BOOST
     override var lastAPSResult: APSResult? = null
+
+    // ---- Calibration SMB block ----
+    private val disposable = CompositeDisposable()
+    @Volatile private var calibrationBlockedUntil: Long = 0L
+
+    override fun onStart() {
+        super.onStart()
+        disposable += rxBus
+            .toObservable(EventCalibrationDetected::class.java)
+            .observeOn(aapsSchedulers.io)
+            .subscribe({
+                calibrationBlockedUntil = dateUtil.now() + 15 * 60_000L
+                aapsLogger.debug(LTag.APS, "Boost SMB block set: calibration detected, blocked until ${dateUtil.dateAndTimeString(calibrationBlockedUntil)}")
+            }, { aapsLogger.error(LTag.APS, "EventCalibrationDetected error", it) })
+    }
+
+    override fun onStop() {
+        disposable.clear()
+        super.onStop()
+    }
 
     // ---- Boost V2 preference getters ----
 
@@ -549,7 +574,12 @@ open class OpenAPSBoostV2Plugin @Inject constructor(
         val iobArray = iobCobCalculator.calculateIobArrayForSMB(autosensResult, SMBDefaults.exercise_mode, SMBDefaults.half_basal_exercise_target, isTempTarget)
         val mealData = iobCobCalculator.getMealDataWithWaitingForCalculationFinish()
         val profilePercent = if (profile is ProfileSealed.EPS) profile.value.originalPercentage else 100
-        val microBolusAllowed = constraintsChecker.isSMBModeEnabled(ConstraintObject(tempBasalFallback.not(), aapsLogger)).also { inputConstraints.copyReasons(it) }.value()
+        val microBolusAllowedByConstraints = constraintsChecker.isSMBModeEnabled(ConstraintObject(tempBasalFallback.not(), aapsLogger)).also { inputConstraints.copyReasons(it) }.value()
+        val microBolusAllowed = if (dateUtil.now() < calibrationBlockedUntil) {
+            val remainingMin = (calibrationBlockedUntil - dateUtil.now()) / 60_000
+            aapsLogger.debug(LTag.APS, "Boost SMB blocked: calibration detected ${remainingMin}min ago, ${15 - remainingMin}min elapsed of 15")
+            false
+        } else microBolusAllowedByConstraints
         val flatBGsDetected = bgQualityCheck.state == BgQualityCheck.State.FLAT
 
         // ---- Boost-specific calculations ----
