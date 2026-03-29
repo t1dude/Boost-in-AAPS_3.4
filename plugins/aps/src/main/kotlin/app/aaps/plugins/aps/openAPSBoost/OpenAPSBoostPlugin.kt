@@ -204,6 +204,9 @@ open class OpenAPSBoostPlugin @Inject constructor(
     @Volatile private var recoveryWindowEnd: Long = 0L
     @Volatile private var wasExerciseActive: Boolean = false
     @Volatile private var exerciseStartTime: Long = 0L
+    @Volatile private var lastExerciseStateAtTransition: String = "ACTIVE"
+    @Volatile private var activeRecoveryScale: Double = 0.5
+    @Volatile private var activeRecoveryTargetOffset: Double = 0.0
 
     // ---- Lifecycle ----
 
@@ -731,23 +734,38 @@ open class OpenAPSBoostPlugin @Inject constructor(
         val activityResult = calculateBoostActivity(now, isTempTarget, targetBg, minBg, maxBg, profilePercent)
 
         // 1b. Post-exercise recovery transition detection
+        // HR-aware: all exercise states (aerobic, resistance) trigger recovery, not just "ACTIVE".
+        // Recovery window duration, target BG, and SMB scale are adjusted per exercise type.
         if (postExerciseRecoveryEnabled) {
-            val isCurrentlyActive = activityResult.activityState == "ACTIVE"
+            val exerciseStateSet = setOf("ACTIVE", "VIGOROUS_AEROBIC", "MODERATE_AEROBIC", "LIGHT_AEROBIC", "RESISTANCE")
+            val isCurrentlyActive = activityResult.activityState in exerciseStateSet
             if (isCurrentlyActive && !wasExerciseActive) {
-                // ACTIVE transition: record start time
                 exerciseStartTime = now
-                aapsLogger.debug(LTag.APS, "Boost post-exercise: exercise started at ${dateUtil.dateAndTimeString(exerciseStartTime)}")
+                aapsLogger.debug(LTag.APS, "Boost post-exercise: exercise started (${activityResult.activityState}) at ${dateUtil.dateAndTimeString(exerciseStartTime)}")
             } else if (!isCurrentlyActive && wasExerciseActive) {
-                // ACTIVE → inactive transition: check duration and trigger recovery
                 val exerciseDurationMin = (now - exerciseStartTime) / 60_000L
-                aapsLogger.debug(LTag.APS, "Boost post-exercise: exercise ended after ${exerciseDurationMin}min (min required: $postExerciseMinDuration)")
+                aapsLogger.debug(LTag.APS, "Boost post-exercise: exercise ended (was $lastExerciseStateAtTransition) after ${exerciseDurationMin}min")
                 if (exerciseDurationMin >= postExerciseMinDuration) {
-                    val recoveryMillis = (postExerciseRecoveryHours * 3600_000L).toLong()
+                    // Adjust recovery parameters based on exercise type (HR-classified or step-only).
+                    // Multipliers are evidence-based relative to the user's configured baseline:
+                    //   VIGOROUS_AEROBIC  — high immediate hypo risk: longer window, more SMB suppression
+                    //   RESISTANCE        — delayed hypo risk + acute BG rise: longest window, less SMB
+                    //                       suppression (BG runs high initially), slightly higher target
+                    //   LIGHT_AEROBIC     — minimal glycogen depletion: shorter window, less suppression
+                    //   ACTIVE/MODERATE   — baseline (no multiplier)
+                    val (windowMultiplier, targetOffsetMgdl, scaleMultiplier) = when (lastExerciseStateAtTransition) {
+                        "VIGOROUS_AEROBIC" -> Triple(1.25, 0.0,  0.8)
+                        "RESISTANCE"       -> Triple(1.5,  10.0, 1.2)
+                        "LIGHT_AEROBIC"    -> Triple(0.5,  0.0,  1.4)
+                        else               -> Triple(1.0,  0.0,  1.0)
+                    }
+                    val recoveryMillis = (postExerciseRecoveryHours * 3600_000L * windowMultiplier).toLong()
+                    val recoveryTargetMgdl = postExerciseRecoveryTarget + targetOffsetMgdl
+                    activeRecoveryScale = (postExerciseRecoveryScale * scaleMultiplier).coerceIn(0.1, 1.0)
+                    activeRecoveryTargetOffset = targetOffsetMgdl
                     recoveryWindowEnd = now + recoveryMillis
-                    aapsLogger.debug(LTag.APS, "Boost post-exercise: recovery window started, ends at ${dateUtil.dateAndTimeString(recoveryWindowEnd)}")
-                    // Insert TempTarget only if none currently active
+                    aapsLogger.debug(LTag.APS, "Boost post-exercise [$lastExerciseStateAtTransition]: window=${recoveryMillis / 60_000}min target=${recoveryTargetMgdl.toInt()}mg/dL SMBscale=$activeRecoveryScale")
                     if (persistenceLayer.getTemporaryTargetActiveAt(now) == null) {
-                        val recoveryTargetMgdl = postExerciseRecoveryTarget
                         val tt = TT(
                             timestamp = now,
                             duration = recoveryMillis,
@@ -776,6 +794,7 @@ open class OpenAPSBoostPlugin @Inject constructor(
                     aapsLogger.debug(LTag.APS, "Boost post-exercise: exercise too brief (${exerciseDurationMin}min < ${postExerciseMinDuration}min) — no recovery")
                 }
             }
+            if (isCurrentlyActive) lastExerciseStateAtTransition = activityResult.activityState
             wasExerciseActive = isCurrentlyActive
         }
 
@@ -887,15 +906,15 @@ open class OpenAPSBoostPlugin @Inject constructor(
             boostActive = activityResult.boostActive,
             profileSwitch = activityResult.profileSwitch,
             boost_bolus = if (postExerciseRecoveryEnabled && now < recoveryWindowEnd) {
-                val scaled = boostBolus * postExerciseRecoveryScale
-                aapsLogger.debug(LTag.APS, "Boost post-exercise recovery: boost_bolus scaled from $boostBolus to $scaled")
+                val scaled = boostBolus * activeRecoveryScale
+                aapsLogger.debug(LTag.APS, "Boost post-exercise recovery [$lastExerciseStateAtTransition]: boost_bolus $boostBolus → $scaled (scale=$activeRecoveryScale)")
                 scaled
             } else boostBolus,
             boost_maxIOB = boostMaxIob,
             Boost_InsulinReq = boostInsulinReqPct,
             boost_scale = if (postExerciseRecoveryEnabled && now < recoveryWindowEnd) {
-                val scaled = boostScale * postExerciseRecoveryScale
-                aapsLogger.debug(LTag.APS, "Boost post-exercise recovery: boost_scale scaled from $boostScale to $scaled")
+                val scaled = boostScale * activeRecoveryScale
+                aapsLogger.debug(LTag.APS, "Boost post-exercise recovery [$lastExerciseStateAtTransition]: boost_scale $boostScale → $scaled (scale=$activeRecoveryScale)")
                 scaled
             } else boostScale,
             boost_percent_scale = boostPercentScale,
