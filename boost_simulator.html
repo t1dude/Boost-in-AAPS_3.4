@@ -343,9 +343,117 @@ canvas {
   border-color: #6ee7b7;
   color: #6ee7b7;
 }
+
+/* ── Nightscout modal ─── */
+#ns-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+}
+#ns-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 28px 28px 24px;
+  width: 440px; max-width: 100%;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+}
+#ns-modal h2 {
+  font-size: 1.05rem; font-weight: 700; color: #e2e8f0; margin-bottom: 6px;
+}
+#ns-modal .ns-intro {
+  font-size: 0.8rem; color: #64748b; line-height: 1.55; margin-bottom: 20px;
+}
+.ns-field { margin-bottom: 14px; }
+.ns-field label {
+  display: block; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: #94a3b8; margin-bottom: 5px;
+}
+.ns-field input {
+  width: 100%; background: #0f1117; border: 1px solid #334155;
+  border-radius: 7px; padding: 9px 12px;
+  font-size: 0.85rem; color: #e2e8f0; outline: none;
+  transition: border-color 0.15s;
+}
+.ns-field input:focus { border-color: #6ee7b7; }
+.ns-field input::placeholder { color: #475569; }
+.ns-btn-row {
+  display: flex; gap: 10px; margin-top: 20px;
+}
+.ns-btn-connect {
+  flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer;
+  background: #10b981; color: #fff; font-size: 0.85rem; font-weight: 700;
+  transition: background 0.15s;
+}
+.ns-btn-connect:hover { background: #059669; }
+.ns-btn-connect:disabled { background: #1e3a2f; color: #4b7a65; cursor: default; }
+.ns-btn-skip {
+  padding: 10px 18px; border-radius: 8px; border: 1px solid #334155; cursor: pointer;
+  background: transparent; color: #94a3b8; font-size: 0.85rem; font-weight: 600;
+  transition: all 0.15s;
+}
+.ns-btn-skip:hover { border-color: #64748b; color: #e2e8f0; }
+#ns-status-msg {
+  margin-top: 12px; font-size: 0.78rem; min-height: 18px;
+  text-align: center; border-radius: 6px; padding: 0;
+}
+#ns-status-msg.ok  { color: #10b981; }
+#ns-status-msg.err { color: #f87171; }
+#ns-status-msg.loading { color: #94a3b8; }
+
+/* ── NS live bar in header ─── */
+#ns-live-bar {
+  display: none; align-items: center; gap: 10px;
+  background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25);
+  border-radius: 8px; padding: 6px 12px;
+  font-size: 0.75rem; color: #6ee7b7;
+}
+#ns-live-bar .ns-live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #10b981;
+  animation: nsPulse 2s infinite;
+}
+@keyframes nsPulse {
+  0%,100% { opacity:1; } 50% { opacity:0.3; }
+}
+#ns-live-bar button {
+  background: none; border: none; cursor: pointer;
+  color: #6ee7b7; font-size: 0.72rem; text-decoration: underline;
+  padding: 0;
+}
+#ns-live-bar button:hover { color: #fff; }
 </style>
 </head>
 <body>
+
+<!-- ════════════════════════════════════════════════════════ -->
+<!-- NIGHTSCOUT MODAL                                          -->
+<!-- ════════════════════════════════════════════════════════ -->
+<div id="ns-modal-overlay">
+  <div id="ns-modal">
+    <h2>Boost Settings Simulator</h2>
+    <p class="ns-intro">
+      Enter your Nightscout URL and access token to pre-fill the simulator
+      with live data (BG, deltas, IOB, COB, profile). Or click
+      <strong style="color:#e2e8f0">Manual Simulation</strong> to set values yourself.
+    </p>
+    <div class="ns-field">
+      <label>Nightscout URL</label>
+      <input id="ns-url-input" type="url" placeholder="https://your-site.ns.10be.de" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="ns-field">
+      <label>Access Token (optional — needed for private sites)</label>
+      <input id="ns-token-input" type="text" placeholder="yourname-xxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="ns-btn-row">
+      <button class="ns-btn-connect" id="ns-connect-btn" onclick="connectNightscout()">Connect &amp; Load Data</button>
+      <button class="ns-btn-skip" onclick="closeNsModal()">Manual Simulation</button>
+    </div>
+    <div id="ns-status-msg"></div>
+  </div>
+</div>
 
 <div class="app">
 
@@ -356,6 +464,12 @@ canvas {
   <div>
     <h1>Boost <span>Settings Simulator</span></h1>
     <p>Live calculation of ISF, SMB size, and aggressiveness as you tweak settings</p>
+  </div>
+  <div id="ns-live-bar">
+    <div class="ns-live-dot"></div>
+    <span id="ns-live-label">Nightscout live</span>
+    <button onclick="refreshNsData()">Refresh</button>
+    <button onclick="disconnectNs()" style="color:#f87171">Disconnect</button>
   </div>
   <div class="tab-bar">
     <div class="tab active" onclick="switchTab('isf')">ISF &amp; SMB</div>
@@ -1880,6 +1994,217 @@ function switchTab(name) {
   // Redraw charts when switching to chart tabs
   setTimeout(() => { const inp = getInputs(); drawCharts(inp, calcAll(inp)); }, 50);
 }
+
+// ════════════════════════════════════════════════════════════
+// Nightscout integration
+// ════════════════════════════════════════════════════════════
+let nsUrl = '', nsToken = '';
+
+function closeNsModal() {
+  document.getElementById('ns-modal-overlay').style.display = 'none';
+}
+
+function setNsMsg(msg, cls) {
+  const el = document.getElementById('ns-status-msg');
+  el.textContent = msg;
+  el.className = cls || '';
+}
+
+async function connectNightscout() {
+  const rawUrl   = document.getElementById('ns-url-input').value.trim();
+  const rawToken = document.getElementById('ns-token-input').value.trim();
+
+  if (!rawUrl) {
+    // No URL — just go to manual mode
+    closeNsModal();
+    return;
+  }
+
+  const btn = document.getElementById('ns-connect-btn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  setNsMsg('Fetching data from Nightscout…', 'loading');
+
+  try {
+    await fetchAndApplyNs(rawUrl, rawToken);
+    nsUrl   = rawUrl;
+    nsToken = rawToken;
+    localStorage.setItem('ns_url',   nsUrl);
+    localStorage.setItem('ns_token', nsToken);
+    closeNsModal();
+    showNsBar();
+  } catch (e) {
+    setNsMsg('Error: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Connect & Load Data';
+  }
+}
+
+async function fetchAndApplyNs(url, token) {
+  const base = url.replace(/\/+$/, '');
+  function apiUrl(path, extra) {
+    const qs = new URLSearchParams();
+    if (token) qs.set('token', token);
+    if (extra) Object.entries(extra).forEach(([k,v]) => qs.set(k, v));
+    return `${base}${path}?${qs}`;
+  }
+
+  // ── Fetch entries (BG readings) ───────────────────────────
+  const entRes = await fetch(apiUrl('/api/v1/entries.json', { count: 12 }));
+  if (!entRes.ok) throw new Error(`Entries ${entRes.status}: check URL and token`);
+  const entries = await entRes.json();
+  if (!entries || entries.length < 2) throw new Error('Not enough BG readings in Nightscout');
+
+  // ── Fetch device status (IOB, COB) ────────────────────────
+  let ds = null;
+  try {
+    const dsRes = await fetch(apiUrl('/api/v1/devicestatus.json', { count: 1 }));
+    if (dsRes.ok) { const arr = await dsRes.json(); ds = arr && arr[0]; }
+  } catch (_) {}
+
+  // ── Fetch profile (basal, ISF, CR, target) ────────────────
+  let profile = null;
+  try {
+    const prRes = await fetch(apiUrl('/api/v1/profile.json'));
+    if (prRes.ok) profile = await prRes.json();
+  } catch (_) {}
+
+  applyNsData(entries, ds, profile);
+}
+
+// Normalise a per-5-min delta from two entries that may be any time apart
+function entryDelta(a, b) {
+  const dt = (a.date - b.date) / 60000; // minutes
+  if (dt <= 0 || dt > 15) return null;
+  return (a.sgv - b.sgv) * (5 / dt);
+}
+
+// Average rate over a window (expressed as per-5-min)
+function avgDeltaOverWindow(entries, windowMin) {
+  const cutoff = entries[0].date - windowMin * 60000 - 30000;
+  const slice  = entries.filter(e => e.date >= cutoff);
+  if (slice.length < 2) return entryDelta(entries[0], entries[1]);
+  const oldest = slice[slice.length - 1];
+  const dt = (entries[0].date - oldest.date) / 60000;
+  if (dt <= 0) return 0;
+  return (entries[0].sgv - oldest.sgv) * (5 / dt);
+}
+
+function getProfileValueAt(schedule, nowMs) {
+  // schedule: [{time:"HH:MM", value:x}, ...] sorted by time
+  if (!schedule || !schedule.length) return null;
+  const midnight = new Date(nowMs); midnight.setHours(0,0,0,0);
+  const secsFromMidnight = (nowMs - midnight.getTime()) / 1000;
+  let val = schedule[0].value;
+  for (const slot of schedule) {
+    const parts = slot.time.split(':').map(Number);
+    const slotSecs = parts[0]*3600 + parts[1]*60;
+    if (slotSecs <= secsFromMidnight) val = slot.value;
+    else break;
+  }
+  return val;
+}
+
+function setSlider(id, value, min, max) {
+  const el = document.getElementById('s-' + id);
+  if (!el) return;
+  el.value = Math.max(parseFloat(el.min || min), Math.min(parseFloat(el.max || max), value));
+}
+
+function applyNsData(entries, ds, profileData) {
+  const nowMs = Date.now();
+
+  // ── BG and deltas ─────────────────────────────────────────
+  const bg        = entries[0].sgv;
+  const delta     = entryDelta(entries[0], entries[1]) ?? 0;
+  const shortAvg  = avgDeltaOverWindow(entries, 15) ?? delta;
+  const longAvg   = avgDeltaOverWindow(entries, 30) ?? delta * 0.7;
+
+  setSlider('bg',            bg,       40,  350);
+  setSlider('delta',         +delta.toFixed(1),  -10, 15);
+  setSlider('shortAvgDelta', +shortAvg.toFixed(1), -10, 15);
+  setSlider('longAvgDelta',  +longAvg.toFixed(1),  -10, 15);
+
+  // ── IOB and COB from device status ────────────────────────
+  if (ds) {
+    const oas = ds.openaps || {};
+    const iob = oas.iob?.iob ?? oas.suggested?.IOB ?? oas.enacted?.IOB;
+    const cob = oas.suggested?.COB ?? oas.enacted?.COB ?? oas.iob?.activity;
+    if (iob != null && isFinite(iob)) setSlider('iob', +iob.toFixed(2), -1, 15);
+    if (cob != null && isFinite(cob) && cob >= 0) setSlider('cob', Math.round(cob), 0, 100);
+    // TDD – AAPS may put it in various locations
+    const tdd = oas.suggested?.TDD ?? oas.enacted?.TDD ?? oas.iob?.TDD ?? ds.tdd;
+    if (tdd != null && isFinite(tdd) && tdd > 5) setSlider('tdd', +tdd.toFixed(1), 10, 100);
+  }
+
+  // ── Profile: basal, ISF, CR, target ──────────────────────
+  if (profileData) {
+    // Nightscout profile.json can be a single object or array; take first/current
+    const rec  = Array.isArray(profileData) ? profileData[0] : profileData;
+    const store = rec?.store;
+    const defaultName = rec?.defaultProfile || (store && Object.keys(store)[0]);
+    const prof = store?.[defaultName];
+    if (prof) {
+      const basal  = getProfileValueAt(prof.basal,     nowMs);
+      const isf    = getProfileValueAt(prof.sens,      nowMs); // sens = ISF in NS profile
+      const cr     = getProfileValueAt(prof.carbratio, nowMs);
+      const tgLow  = getProfileValueAt(prof.target_low,  nowMs);
+      const tgHigh = getProfileValueAt(prof.target_high, nowMs);
+      if (basal != null) setSlider('basal',   +basal.toFixed(2), 0.1, 5);
+      if (isf   != null) setSlider('profIsf', Math.round(isf),   10,  200);
+      if (cr    != null) setSlider('cr',      +cr.toFixed(1),    3,   30);
+      if (tgLow != null && tgHigh != null) {
+        setSlider('target', Math.round((tgLow + tgHigh) / 2), 72, 180);
+      }
+    }
+  }
+
+  update();
+}
+
+function showNsBar() {
+  const bar = document.getElementById('ns-live-bar');
+  bar.style.display = 'flex';
+  const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('ns-live-label').textContent = `Nightscout live · loaded ${now}`;
+}
+
+async function refreshNsData() {
+  if (!nsUrl) return;
+  const lbl = document.getElementById('ns-live-label');
+  const prev = lbl.textContent;
+  lbl.textContent = 'Refreshing…';
+  try {
+    await fetchAndApplyNs(nsUrl, nsToken);
+    const now = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    lbl.textContent = `Nightscout live · refreshed ${now}`;
+  } catch (e) {
+    lbl.textContent = prev + ' (refresh failed)';
+  }
+}
+
+function disconnectNs() {
+  nsUrl = ''; nsToken = '';
+  localStorage.removeItem('ns_url');
+  localStorage.removeItem('ns_token');
+  document.getElementById('ns-live-bar').style.display = 'none';
+}
+
+// ── On load: restore saved URL/token, show modal ─────────
+(function initNs() {
+  const savedUrl   = localStorage.getItem('ns_url')   || '';
+  const savedToken = localStorage.getItem('ns_token') || '';
+  document.getElementById('ns-url-input').value   = savedUrl;
+  document.getElementById('ns-token-input').value = savedToken;
+  // If saved credentials exist, try to auto-connect; otherwise just show modal
+  if (savedUrl) {
+    nsUrl = savedUrl; nsToken = savedToken;
+    fetchAndApplyNs(savedUrl, savedToken)
+      .then(() => { closeNsModal(); showNsBar(); })
+      .catch(() => { /* show modal so user can fix credentials */ });
+  }
+})();
 
 // Initial render
 window.addEventListener('resize', () => { const inp = getInputs(); drawCharts(inp, calcAll(inp)); });
