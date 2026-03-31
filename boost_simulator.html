@@ -877,8 +877,8 @@ function getInputs() {
     insulinReqPct: gf('s-insulinReqPct') / 100,
     smbMin:        gf('s-smbMin'),
     uamSmbMin:     gf('s-uamSmbMin'),
-    percentScale:  gb('t-percentScale'),
-    percentScaleVal: gf('s-percentScale') / 100,
+    percentScale:    gb('t-percentScale'),
+    percentScaleVal: gf('s-percentScale'),      // raw value (e.g. 200), matches Kotlin formula
     // Activity
     activityState: gs('s-activityState'),
     activityPct:   gf('s-activityPct'),
@@ -1502,7 +1502,7 @@ const DEFAULTS = {
   useTdd:true, normTarget:99, bgCap:210, velocity:100, tddAdj:100,
   adjustSens:false, sensRatio:1.0, circadian:false, circHour:12,
   scale:1.0, maxIob:1.0, bolusMax:2.5, insulinReqPct:50, smbMin:30, uamSmbMin:15,
-  percentScale:false, percentScale:200,
+  percentScale:false, percentScaleVal:200,
   activityState:'normal', activityPct:80, inactivityPct:130,
   nightMode:false, nightActive:false, nightOffset:27, cob:0, nightModeCob:false,
   tempTarget:false, tempTargetBg:140, highTtSens:false, lowTtSens:false,
