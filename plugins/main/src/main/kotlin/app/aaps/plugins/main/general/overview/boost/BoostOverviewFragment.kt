@@ -806,9 +806,19 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         graphData.formatAxis(overviewData.fromTime, overviewData.endTime)
         graphData.performUpdate()
 
-        // IOB graph — uses same time range, shows IOB history + projected decay
+        // IOB graph — uses same time range, shows IOB history + projected decay, plus optional HR/steps overlays
         val iobGraphData = graphDataProvider.get().with(binding.iobGraph, overviewData)
         iobGraphData.addIob(true, 1.0)
+        val iobSecondarySettings = menuChartSettings.getOrNull(1)
+        if (iobSecondarySettings != null) {
+            val useHrForScale = iobSecondarySettings[OverviewMenus.CharType.HR.ordinal] &&
+                !iobSecondarySettings[OverviewMenus.CharType.STEPS.ordinal]
+            val useStepsForScale = iobSecondarySettings[OverviewMenus.CharType.STEPS.ordinal]
+            if (iobSecondarySettings[OverviewMenus.CharType.HR.ordinal])
+                iobGraphData.addHeartRate(useHrForScale, if (useHrForScale) 1.0 else 0.8)
+            if (iobSecondarySettings[OverviewMenus.CharType.STEPS.ordinal])
+                iobGraphData.addSteps(useStepsForScale, if (useStepsForScale) 1.0 else 0.8)
+        }
         iobGraphData.addNowLine(dateUtil.now())
         iobGraphData.formatAxis(overviewData.fromTime, overviewData.endTime)
         iobGraphData.performUpdate()
