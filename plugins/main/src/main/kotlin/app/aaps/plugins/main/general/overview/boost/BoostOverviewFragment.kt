@@ -813,8 +813,8 @@ class BoostOverviewFragment : DaggerFragment(), View.OnClickListener, View.OnLon
         iobGraphData.formatAxis(overviewData.fromTime, overviewData.endTime)
         iobGraphData.performUpdate()
 
-        // HR / Steps graph — third graph, shown only when HR or Steps enabled in chart menu (graph 2)
-        val hrStepsSettings = menuChartSettings.getOrNull(2)
+        // HR / Steps graph — third graph, shown only when HR or Steps enabled in chart menu (graph 1)
+        val hrStepsSettings = menuChartSettings.getOrNull(1)
         val showHr = hrStepsSettings?.get(OverviewMenus.CharType.HR.ordinal) == true
         val showSteps = hrStepsSettings?.get(OverviewMenus.CharType.STEPS.ordinal) == true
         if (showHr || showSteps) {
