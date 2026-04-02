@@ -352,15 +352,7 @@ open class OpenAPSBoostPlugin @Inject constructor(
                 aapsLogger.debug(LTag.APS, "Boost: TDD parts missing (7D=$tdd7D 1D=$tdd1D 24H=$tddLast24H 4H=$tddLast4H 8-4H=$tddLast8to4H)")
             }
         } else {
-            // When TDD-based DynISF is off, profileSens already has the profile switch scaling
-            // baked in (e.g. ×0.8 for 80% activity profile). Apply globalScale to undo it so
-            // ISF isn't artificially lowered (more aggressive) during exercise.
-            if (globalScale != 1.0) {
-                sensNormalTarget *= globalScale
-                debug.append("TDD-based ISF: disabled (profile ISF ${Round.roundTo(profileSens, 0.1)} → ${Round.roundTo(sensNormalTarget, 0.1)} after activity scale correction)")
-            } else {
-                debug.append("TDD-based ISF: disabled (using profile ISF ${Round.roundTo(profileSens, 0.1)})")
-            }
+            debug.append("TDD-based ISF: disabled (using profile ISF ${Round.roundTo(profileSens, 0.1)})")
         }
 
         // Temp target sensitivity adjustment
@@ -813,8 +805,10 @@ open class OpenAPSBoostPlugin @Inject constructor(
         val insulinDivisor = if (insulinPeak < 60) (90 - insulinPeak) + 30 else (90 - insulinPeak) + 40
 
         // 3. ISF pre-calculation
+        // Profile switch inversely scales ISF: 80% profile → 125% ISF (more sensitive),
+        // 120% profile → 83% ISF (more resistant).
         val profileScale = activityResult.profileSwitch.toDouble() / 100.0
-        val scaledProfileSens = profile.getIsfMgdl("OpenAPSBoostPlugin") * profileScale
+        val scaledProfileSens = profile.getIsfMgdl("OpenAPSBoostPlugin") / profileScale
         val isfResult = calculateBoostIsf(
             profileSens = scaledProfileSens,
             profilePercent = activityResult.profileSwitch,
