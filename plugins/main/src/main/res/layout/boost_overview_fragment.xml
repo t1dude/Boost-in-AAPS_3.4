@@ -495,7 +495,7 @@
 
                     </RelativeLayout>
 
-                    <!-- ═══ HR / Steps graph (hidden unless HR or Steps enabled in chart menu) ═══ -->
+                    <!-- ═══ HR / Steps graph (hidden unless enabled in chart menu) ═══ -->
                     <RelativeLayout
                         android:id="@+id/hr_steps_graph_container"
                         android:layout_width="match_parent"
