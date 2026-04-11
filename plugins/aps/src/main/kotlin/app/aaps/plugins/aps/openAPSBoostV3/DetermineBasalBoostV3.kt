@@ -1252,7 +1252,7 @@ class DetermineBasalBoostV3 @Inject constructor(
                     consoleError.add("UAM High Boost enacted; SMB equals $boostInsulinReq; Original insulin requirement was $insulinReq")
                 }
                 // ----- Tier 5: Percent scale (BG 98-180, delta > 3, accelerating) -----
-                else if (bg > 98 && bg < 181 && glucose_status.delta > 3 && delta_accl > 0 && eventualBG > target_bg && iob_data.iob < boostMaxIOB && boostActive) {
+                else if (bg > 110 && bg < 181 && glucose_status.delta > 3 && delta_accl > 0 && eventualBG > target_bg && iob_data.iob < boostMaxIOB && boostActive) {
                     consoleError.add(">>> TIER 5: Percent Scale <<<")
                     rT.boostTier = "PERCENT_SCALE"
                     if (insulinReq > boostMaxIOB - iob_data.iob) {
@@ -1275,7 +1275,7 @@ class DetermineBasalBoostV3 @Inject constructor(
                     consoleError.add("Post percent scale trigger state: $iTimeActive")
                 }
                 // ----- Tier 6: Acceleration bolus (delta_accl > 25) -----
-                else if (delta_accl > 25 && glucose_status.delta > 4 && iob_data.iob < boostMaxIOB && boostActive && eventualBG > target_bg) {
+                else if (delta_accl > 25 && glucose_status.delta > 4 && bg > 110 && iob_data.iob < boostMaxIOB && boostActive && eventualBG > target_bg) {
                     consoleError.add(">>> TIER 6: Acceleration Bolus <<<")
                     rT.boostTier = "ACCELERATION"
                     boostInsulinReq = min(boost_scale * boostInsulinReq, boost_max)
